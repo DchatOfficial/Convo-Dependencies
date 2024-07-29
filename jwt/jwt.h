@@ -21,10 +21,81 @@
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
+namespace nodepp { namespace jwt { namespace XOR {
+
+    string_t hash_generator( string_t message, string_t secret ) {
+
+        ptr_t<uchar> data ( 32, 0x00 ); ulong z=0, y=0, w=0;
+
+        forEach( x, message ){ x ^= secret[w]; w++; }
+
+        forEach( x, data ){ while( y++<(data.size()+z) ){
+            x += message[data.size()-y];
+            x += message[y]; y++;
+        }   z += data.size(); }
+
+        return encoder::hex::get( data );
+
+    }
+
+    bool verify ( const string_t& token, const string_t& secret ){
+        try { if( token.empty()  ){ return false; }
+              if( secret.empty() ){ return false; }
+
+        auto data = regex::split( token, '.' );
+        if ( data.size() != 3 ){ return false; }
+
+        auto obj = json::parse( encoder::base64::set( data[0] ) );
+        if( !obj["alg"].has_value() || obj["alg"].as<string_t>() != "XOR" )
+          { return false; } 
+
+        string_t _token = string::format("%s.%s",data[0].get(),data[1].get());
+        auto sig = hash_generator( _token, secret );
+        auto ver = encoder::base64::get( sig );
+
+        return ver == data[2];
+
+        } catch(...) { return false; }
+    }
+
+    string_t encode ( const string_t& payload, string_t secret ){
+
+        string_t header = R"({"alg":"XOR","typ":"JWT"})";
+        string_t token  = string::format("%s.%s",
+            encoder::base64::get(  header ).get(),
+            encoder::base64::get( payload ).get()
+        );
+
+        auto data = hash_generator( token, secret );
+
+        return string::format("%s.%s.%s",
+            encoder::base64::get(  header.get() ).get(),
+            encoder::base64::get( payload.get() ).get(),
+            encoder::base64::get(    data.get() ).get()
+        );
+
+    }
+
+    string_t decode ( const string_t& token ){
+        if( token.empty() ){ return nullptr; }
+
+        auto data = regex::split( token, '.' );
+        if ( data.size() != 3 )
+           { process::error("invalid token"); }
+
+        return encoder::base64::set( data[1] );
+
+    }
+
+}}}
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
 namespace nodepp { namespace jwt { namespace HS256 {
 
     bool verify ( const string_t& token, const string_t& secret ){
-        try { if( token.empty() ){ return false; }
+        try { if( token.empty()  ){ return false; }
+              if( secret.empty() ){ return false; }
 
         auto data = regex::split( token, '.' );
         if ( data.size() != 3 ){ return false; }
@@ -80,7 +151,8 @@ namespace nodepp { namespace jwt { namespace HS256 {
 namespace nodepp { namespace jwt { namespace HS384 {
 
     bool verify ( const string_t& token, const string_t& secret ){
-        try { if( token.empty() ){ return false; }
+        try { if( token.empty()  ){ return false; }
+              if( secret.empty() ){ return false; }
 
         auto data = regex::split( token, '.' );
         if ( data.size() != 3 ){ return false; }
@@ -136,7 +208,8 @@ namespace nodepp { namespace jwt { namespace HS384 {
 namespace nodepp { namespace jwt { namespace HS512 {
 
     bool verify ( const string_t& token, const string_t& secret ){
-        try { if( token.empty() ){ return false; }
+        try { if( token.empty()  ){ return false; }
+              if( secret.empty() ){ return false; }
 
         auto data = regex::split( token, '.' );
         if ( data.size() != 3 ){ return false; }
