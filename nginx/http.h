@@ -125,8 +125,6 @@ protected:
         auto pth = regex::replace( cli.path, path, "/" );
              pth = regex::replace_all( pth, "\\.[.]+/", "" );
 
-		auto cb = _express_::ssr();
-
         auto bsd =!args["path"].has_value() ? "./" :
                    args["path"].as<string_t>() ;
 
@@ -151,9 +149,7 @@ protected:
             cli.header( "Content-Type", path::mimetype(dir) );
 
             if( regex::test(path::mimetype(dir),"audio|video",true) ) { cli.send(); return; }
-            if( regex::test(path::mimetype(dir),"html",true) ){
-                cli.send(); cb( cli, dir );
-            } else { 
+            if( regex::test(path::mimetype(dir),"html",true) ){ cli.render( dir ); } else { 
                 cli.header( "Content-Length", string::to_string(str.size()) );
                 cli.header( "Cache-Control", "public, max-age=604800" );
                 cli.sendStream( str );
