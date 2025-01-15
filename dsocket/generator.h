@@ -1,9 +1,9 @@
-#ifndef NODEPP_HTTP_SOCKET_GENERATOR
-#define NODEPP_HTTP_SOCKET_GENERATOR
+#ifndef NODEPP_DSOCKET_GENERATOR
+#define NODEPP_DSOCKET_GENERATOR
 
 #include <nodepp/encoder.h>
 
-namespace nodepp { namespace _hs_ {
+namespace nodepp { namespace _ds_ {
     
     /*─······································································─*/
 

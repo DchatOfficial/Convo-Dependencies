@@ -25,46 +25,6 @@
 namespace nodepp { class nginx_https_t : public express_tls_t {
 protected:
 
-    struct IP {
-        string_t   ip;
-        uint    count;
-        ulong timeout;
-    };
-
-    struct NODE {
-        queue_t<IP> count;
-    };  ptr_t<NODE> cnf;
-
-    /*.........................................................................*/
-
-    uint get_count( string_t ip ) const noexcept {
-        auto n = cnf->count.first(); while( n!=nullptr ){
-        if ( n->data.ip == ip ){ return n->data.count; } n = n->next; 
-        }  return 0;
-    }
-
-    /*.........................................................................*/
-
-    bool check_ip( string_t ip, uint limit ) const noexcept {
-
-        auto n = cnf->count.first(); while( n!=nullptr ){ auto x = n->next;
-          if( n->data.ip == ip ){
-          if( n->data.timeout < process::millis() ){ cnf->count.erase(n); }
-          if( n->data.count > limit ){ return false; } n->data.count++;
-        return true; } else {
-          if( n->data.timeout < process::millis() ){ cnf->count.erase(n); }
-        } n = x; }
-        
-        IP item; memset( &item, sizeof(item), 0 );
-        item.timeout = process::millis() + 10000;
-        item.ip = ip; item.count = 0;
-        cnf->count.push( item );
-
-        return true;
-    }
-
-    /*.........................................................................*/
-
     void file( express_https_t& cli, string_t cmd, string_t path, object_t args ) const noexcept {
 
         auto pth = regex::replace( cli.path, path, "/" );
@@ -126,9 +86,9 @@ protected:
         auto slf = type::bind( cli );
         auto hdr = cli.headers;
 
-        hdr["params"]  = query::format( cli.params );
-        hdr["Count"]   = string::to_string( get_count( cli.get_peername() ) );
-        hdr["Real-Ip"] = cli.get_peername(); hdr["Host"] = uri.hostname;
+        hdr["params"] = query::format( cli.params );
+        hdr["Real-Ip"]= cli.get_peername(); 
+        hdr["Host"]   = uri.hostname;
 
         if( uri.protocol.to_lower_case() == "https" ){
             
@@ -170,10 +130,6 @@ protected:
         auto n = args==nullptr ? object_t() : *args; auto self = type::bind( this );
         this->ALL( path, [=]( express_https_t& cli ){
 
-            if( n["limit"].has_value() && !self->check_ip( cli.get_peername(), n["limit"].as<uint>() ) ){
-                cli.status(429).send("too many requests"); return; 
-            }
-
             if(!n["timeout"].has_value() ){ n["timeout"] = 0; }
             if( n["timeout"].has_value() ){ cli.set_timeout(n["timeout"].as<uint>()); }
             if( n["method"] .has_value() && !regex::test( cli.method, n["method"].as<string_t>() ) )
@@ -193,7 +149,7 @@ protected:
 public:
 
     template< class... T >
-    nginx_https_t( const T&... args ) : cnf( new NODE() ){ express_tls_t( args... ); }
+    nginx_https_t( const T&... args ) noexcept : express_tls_t( args... ) {}
 
     void add( string_t cmd, string_t path, object_t args ) const noexcept {
         append( cmd, path, &args );
@@ -202,16 +158,6 @@ public:
     void add( string_t cmd, string_t path ) const noexcept {
         append( cmd, path, nullptr );
     }
-
-    uint get_ip_count( string_t ip ) const noexcept {
-        return get_count( ip );
-    }
-
-    template< class... T >
-    tls_t& listen( const T&... args ) const noexcept {
-        auto server = express_tls_t::listen( args... );
-        /*obj->fd.poll( false );*/ return obj->fd;
-    } 
 
 };}
 
