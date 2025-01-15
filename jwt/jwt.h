@@ -23,21 +23,6 @@
 
 namespace nodepp { namespace jwt { namespace XOR {
 
-    string_t hash_generator( string_t message, string_t secret ) {
-
-        ptr_t<uchar> data ( 32, 0x00 ); ulong z=0, y=0, w=0;
-
-        forEach( x, message ){ x ^= secret[w]; w++; }
-
-        forEach( x, data ){ while( y++<(data.size()+z) ){
-            x += message[data.size()-y];
-            x += message[y]; y++;
-        }   z += data.size(); }
-
-        return encoder::hex::get( data );
-
-    }
-
     bool verify ( const string_t& token, const string_t& secret ){
         try { if( token.empty()  ){ return false; }
               if( secret.empty() ){ return false; }
@@ -50,8 +35,8 @@ namespace nodepp { namespace jwt { namespace XOR {
           { return false; } 
 
         string_t _token = string::format("%s.%s",data[0].get(),data[1].get());
-        auto sig = hash_generator( _token, secret );
-        auto ver = encoder::base64::get( sig );
+        auto sig = crypto::hmac::SHA256( secret ); sig.update( _token );
+        auto ver = encoder::base64::get( sig.get() );
 
         return ver == data[2];
 
@@ -66,7 +51,9 @@ namespace nodepp { namespace jwt { namespace XOR {
             encoder::base64::get( payload ).get()
         );
 
-        auto data = hash_generator( token, secret );
+        auto sig = crypto::hmac::SHA1( secret );
+             sig.update( token );
+        auto data= sig.get();
 
         return string::format("%s.%s.%s",
             encoder::base64::get(  header.get() ).get(),
@@ -133,16 +120,7 @@ namespace nodepp { namespace jwt { namespace HS256 {
 
     }
 
-    string_t decode ( const string_t& token ){
-        if( token.empty() ){ return nullptr; }
-
-        auto data = regex::split( token, '.' );
-        if ( data.size() != 3 )
-           { process::error("invalid token"); }
-
-        return encoder::base64::set( data[1] );
-
-    }
+    string_t decode ( const string_t& token ){ return XOR::decode( token ); }
 
 }}}
 
@@ -190,16 +168,7 @@ namespace nodepp { namespace jwt { namespace HS384 {
 
     }
 
-    string_t decode ( const string_t& token ){
-        if( token.empty() ){ return nullptr; }
-
-        auto data = regex::split( token, '.' );
-        if ( data.size() != 3 )
-           { process::error("invalid token"); }
-
-        return encoder::base64::set( data[1] );
-
-    }
+    string_t decode ( const string_t& token ){ return XOR::decode( token ); }
 
 }}}
 
@@ -247,18 +216,41 @@ namespace nodepp { namespace jwt { namespace HS512 {
 
     }
 
-    string_t decode ( const string_t& token ){
-        if( token.empty() ){ return nullptr; }
-
-        auto data = regex::split( token, '.' );
-        if ( data.size() != 3 )
-           { process::error("invalid token"); }
-
-        return encoder::base64::set( data[1] );
-
-    }
+    string_t decode ( const string_t& token ){ return XOR::decode( token ); }
 
 }}}
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
+namespace nodepp { namespace jwt {
+
+    string_t decode ( const string_t& token ){ return XOR::decode( token ); }
+
+    bool verify ( const string_t& token, string_t secret ){ try {
+
+        auto data = regex::match( token, "[^.]+" ); 
+        if ( data == nullptr ){ throw ""; } 
+
+        auto raw = json::parse( encoder::base64::set(data) );
+        auto type= raw["alg"].as<string_t>();
+
+          if( type=="XOR"   ){ return XOR  ::verify( token, secret ); }
+        elif( type=="HS256" ){ return HS256::verify( token, secret ); }
+        elif( type=="HS384" ){ return HS384::verify( token, secret ); }
+        elif( type=="HS512" ){ return HS512::verify( token, secret ); } 
+        
+      throw "";
+    } catch(...) {} return false; }
+
+    string_t encode ( const string_t& token, string_t secret, string_t type="HS256" ){
+          if( type=="XOR"   ){ return XOR  ::encode( token, secret ); }
+        elif( type=="HS256" ){ return HS256::encode( token, secret ); }
+        elif( type=="HS384" ){ return HS384::encode( token, secret ); }
+        elif( type=="HS512" ){ return HS512::encode( token, secret ); }
+        process::error("invalid token"); return nullptr;
+    }
+
+}}
 
 /*────────────────────────────────────────────────────────────────────────────*/
 
