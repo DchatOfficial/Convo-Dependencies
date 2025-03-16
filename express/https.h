@@ -62,13 +62,13 @@ namespace nodepp { namespace _express_ {
                if( path.size()<25 && !str.params[path].empty() )
                  { while( gen( &str, str.params[path] )==1 ){ coNext; } coEnd; }
                if( !fs::exists_file(path) ){ coGoto(1); }
-                    
+
                     do{ auto file = fs::readable(path);
                               raw = stream::await(file);
                               gen = _file_::write(); pos=0; sop=0;
                             match = regex::search_all(raw,"<°[^°]+°>");
                     } while(0); while( sop != match.size() ){
-                         
+
                          reg = match[sop]; cb = new ssr(); do {
                          auto war = raw.slice( reg[0], reg[1] );
                               dir = regex::match( war,"[^<°> \n\t]+" );
@@ -97,7 +97,7 @@ namespace nodepp { namespace _express_ {
 
                          http::fetch( args ).fail([=](...){ *self->state=0; })
                                             .then([=]( http_t cli ){
-                              if( !str.is_available() ){ return; } cli.set_timeout(1000);
+                              if( !str.is_available() ){ return; }
                               cli.onData([=]( string_t data ){ str.write(data); });
                               cli.onDrain.once([=](){ *self->state=0; });
                               stream::pipe( cli );
@@ -119,7 +119,7 @@ namespace nodepp { namespace _express_ {
 
                          https::fetch( args, &ssl ).fail([=](...){ *self->state=0; })
                                                    .then([=]( https_t cli ){
-                              if( !str.is_available() ){ return; } cli.set_timeout(1000);
+                              if( !str.is_available() ){ return; }
                               cli.onData([=]( string_t data ){ str.write(data); });
                               cli.onDrain.once([=](){ *self->state=0; });
                               stream::pipe( cli );
@@ -128,12 +128,12 @@ namespace nodepp { namespace _express_ {
                     } while(0); while( *state==1 ){ coNext; } }
 
                     else { coYield(1);
-                    
+
                          do{  raw = path;
                               gen = _file_::write(); pos=0; sop=0;
                             match = regex::search_all(raw,"<°[^°]+°>");
                          } while(0); while( sop != match.size() ){
-                              
+
                               reg = match[sop]; cb = new ssr(); do {
                               auto war = raw.slice( reg[0], reg[1] );
                                    dir = regex::match( war,"[^<°> \n\t]+" );
@@ -209,11 +209,11 @@ public: query_t params;
           gnStart
 
                do {
-                    
+
                     auto data = regex::search( inp, "\r\n\r\n" ); if( data.empty() ) { coEnd; }
                     auto hdr  = inp.splice(0,data[0]); header_t obj;
                                 inp.splice(0,4); file->close();
-                    
+
                     ptr_t<regex_t> regs ({
                          regex_t( "filename=\"([^\"]+)\"" ),
                          regex_t( "Content-Type: (.+)" ),
@@ -232,7 +232,7 @@ public: query_t params;
                          obj["path"] = path::join( "/tmp", sha.get() + ".tmp" );
                         *file = fs::writable( obj["path"] );
                     }
-                    
+
                     if( !(*done)[obj["name"]].has_value() ){ (*done)[obj["name"]] = array_t<object_t>(); }
                     auto list = (*done)[obj["name"]].as<array_t<object_t>>(); auto name = obj["name"];
                     obj.erase("name"); list.push( json::parse( obj ) ); (*done)[name] = list;
@@ -440,7 +440,7 @@ protected:
                } else { next(); }
                } else { next(); }
           }
-          
+
      }
 
      string_t normalize( string_t base, string_t path ) const noexcept {
@@ -475,7 +475,7 @@ public:
     /*.........................................................................*/
 
     const express_tls_t& RAW( string_t _method, string_t _path, CALBK cb ) const noexcept {
-         express_item_t item; memset( &item, sizeof(item), 0 );
+         express_item_t item; memset( (void*) &item, 0, sizeof(item) );
          item.method   = _method;
          item.path     = _path;
          item.callback = cb;
@@ -483,7 +483,7 @@ public:
     }
 
     const express_tls_t& RAW( string_t _method, CALBK cb ) const noexcept {
-         express_item_t item; memset( &item, sizeof(item), 0 );
+         express_item_t item; memset( (void*) &item, 0, sizeof(item) );
          item.method   = _method;
          item.path     = "*";
          item.callback = cb;
@@ -491,7 +491,7 @@ public:
     }
 
     const express_tls_t& RAW( CALBK cb ) const noexcept {
-         express_item_t item; memset( &item, sizeof(item), 0 );
+         express_item_t item; memset( (void*) &item, 0, sizeof(item) );
          item.method   = nullptr;
          item.path     = "*";
          item.callback = cb;
@@ -501,7 +501,7 @@ public:
     /*.........................................................................*/
 
     const express_tls_t& USE( string_t _path, express_tls_t cb ) const noexcept {
-         express_item_t item; memset( &item, sizeof(item), 0 );
+         express_item_t item; memset( (void*) &item, 0, sizeof(item) );
          cb.set_path( normalize( obj->path, _path ) );
          item.method     = nullptr;
          item.path       = "*";
@@ -510,7 +510,7 @@ public:
     }
 
     const express_tls_t& USE( express_tls_t cb ) const noexcept {
-         express_item_t item; memset( &item, sizeof(item), 0 );
+         express_item_t item; memset( (void*) &item, 0, sizeof(item) );
          cb.set_path( normalize( obj->path, nullptr ) );
          item.method     = nullptr;
          item.path       = "*";
@@ -521,7 +521,7 @@ public:
     /*.........................................................................*/
 
     const express_tls_t& USE( string_t _path, MIDDL cb ) const noexcept {
-         express_item_t item; memset( &item, sizeof(item), 0 );
+         express_item_t item; memset( (void*) &item, 0, sizeof(item) );
          item.middleware = optional_t<MIDDL>(cb);
          item.method     = nullptr;
          item.path       = _path;
@@ -529,7 +529,7 @@ public:
     }
 
     const express_tls_t& USE( MIDDL cb ) const noexcept {
-         express_item_t item; memset( &item, sizeof(item), 0 );
+         express_item_t item; memset( (void*) &item, 0, sizeof(item) );
          item.middleware = optional_t<MIDDL>(cb);
          item.method     = nullptr;
          item.path       = "*";
