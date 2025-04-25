@@ -39,121 +39,176 @@
 #define NODEPP_EXPRESS_GENERATOR
 namespace nodepp { namespace _express_ {
 
+GENERATOR( ssr ) {
+protected:
 
-     GENERATOR( ssr ) {
-     protected:
+      ptr_t<bool> state = new bool(0);
+      array_t<ptr_t<ulong>> match;
+      string_t      raw, dir;
+      ulong         pos, sop;
+      _file_::write gen;
+      ptr_t<ulong>  reg;
+      ptr_t<ssr>    cb;
 
-          ptr_t<bool> state = new bool(0);
-          array_t<ptr_t<ulong>> match;
-          string_t      raw, dir;
-          ulong         pos, sop;
-          _file_::write gen;
-          ptr_t<ulong>  reg;
-          ptr_t<ssr>    cb;
+protected:
 
-     public:
+     void set( string_t data ){
+         gen   = _file_::write();
+         raw   = data; pos=0; sop=0;
+         match = regex::search_all(raw,"<°[^°]+°>");
+     }
 
-          template< class T >
-          coEmit( T& str, string_t path ){
-              if( !str.is_available() ){ return -1; }
-          gnStart
+public:
 
-               if( !url::is_valid( path ) ){
-               if( path.size()<25 && !str.params[path].empty() )
-                 { while( gen( &str, str.params[path] )==1 ){ coNext; } coEnd; }
-               if( !fs::exists_file(path) ){ coGoto(1); }
+      template< class T >
+      coEmit( T& str, string_t path ){
+          if( !str.is_available() ){ return -1; }
+      gnStart
 
-                    do{ auto file = fs::readable(path);
-                              raw = stream::await(file);
-                              gen = _file_::write(); pos=0; sop=0;
-                            match = regex::search_all(raw,"<°[^°]+°>");
-                    } while(0); while( sop != match.size() ){
+           if( !url::is_valid( path ) ){
 
-                         reg = match[sop]; cb = new ssr(); do {
-                         auto war = raw.slice( reg[0], reg[1] );
-                              dir = regex::match( war,"[^<°> \n\t]+" );
-                         } while(0);
+           if( path.size()<25 && str.params.has(path) ){
+               set( str.params[path] ); while( sop != match.size() ){
 
-                         while( gen( &str, raw.slice( pos, reg[0] ) )==1 )
-                              { coNext; } pos = match[sop][1]; sop++;
+                   reg = match[sop]; cb = new ssr(); do {
+                   auto war = raw.slice( reg[0], reg[1] );
+                        dir = regex::match( war,"[^<°> \n\t]+" );
+                   } while(0);
 
-                         while( (*cb)( str, dir )==1 ){ coNext; }
+                   while( gen( &str, raw.slice( pos, reg[0] ) )==1 )
+                        { coNext; } pos = match[sop][1]; sop++;
 
-                    } while( gen( &str, raw.slice( pos ) )==1 ){ coNext; }
+                   while( (*cb)( str, dir )==1 ){ coNext; }
 
-               } else {
+               } while( gen( &str, raw.slice( pos ) )==1 ){ coNext; }
+           coEnd; }
 
-                    if( url::protocol(path)=="http" ){ do {
-                         auto self = type::bind( this );
-                         fetch_t args; *state=1;
+           if( !fs::exists_file(path) ){ coGoto(1); }
+                set( fs::read_file(path) ); while( sop != match.size() ){
 
-                         args.url     = path;
-                         args.method  = "GET";
-                         args.headers = header_t({
-                              { "Params", query::format( str.params ) },
-                              { "User-Agent", "Nodepp Fetch" },
-                              { "Host", url::hostname(path) }
-                         });
+                     reg = match[sop]; cb = new ssr(); do {
+                     auto war = raw.slice( reg[0], reg[1] );
+                          dir = regex::match( war,"[^<°> \n\t]+" );
+                     } while(0);
 
-                         http::fetch( args ).fail([=](...){ *self->state=0; })
-                                            .then([=]( http_t cli ){
-                              if( !str.is_available() ){ return; }
-                              cli.onData([=]( string_t data ){ str.write(data); });
-                              cli.onDrain.once([=](){ *self->state=0; });
-                              stream::pipe( cli );
-                         });
+                     while( gen( &str, raw.slice( pos, reg[0] ) )==1 )
+                          { coNext; } pos = match[sop][1]; sop++;
 
-                    } while(0); while( *state==1 ){ coNext; } }
+                     while( (*cb)( str, dir )==1 ){ coNext; }
 
-                    elif( url::protocol(path)=="https" ){ do {
-                         ssl_t ssl; fetch_t args; *state=1;
-                         auto self = type::bind( this );
+                } while( gen( &str, raw.slice( pos ) )==1 ){ coNext; }
+           coEnd; }
 
-                         args.url     = path;
-                         args.method  = "GET";
-                         args.headers = header_t({
-                              { "Params", query::format( str.params ) },
-                              { "User-Agent", "Nodepp Fetch" },
-                              { "Host", url::hostname(path) }
-                         });
+           else {
 
-                         https::fetch( args, &ssl ).fail([=](...){ *self->state=0; })
-                                                   .then([=]( https_t cli ){
-                              if( !str.is_available() ){ return; }
-                              cli.onData([=]( string_t data ){ str.write(data); });
-                              cli.onDrain.once([=](){ *self->state=0; });
-                              stream::pipe( cli );
-                         });
+                if( url::protocol(path)=="http" ){ do {
+                     auto self = type::bind( this );
+                     fetch_t args; *state=1;
 
-                    } while(0); while( *state==1 ){ coNext; } }
+                     args.url     = path;
+                     args.method  = "GET";
+                     args.headers = header_t({
+                          { "Params", query::format( str.params ) },
+                          { "Host", url::hostname(path) }
+                     });
 
-                    else { coYield(1);
+                     http::fetch( args ).fail([=](...){ *self->state=0; })
+                                        .then([=]( http_t cli ){
+                          if( !str.is_available() ){ return; }
+                          cli.onData([=]( string_t data ){ str.write(data); });
+                          cli.onDrain.once([=](){ *self->state=0; });
+                          stream::pipe( cli );
+                     });
 
-                         do{  raw = path;
-                              gen = _file_::write(); pos=0; sop=0;
-                            match = regex::search_all(raw,"<°[^°]+°>");
-                         } while(0); while( sop != match.size() ){
+                } while(0); while( *state==1 ){ coNext; } }
 
-                              reg = match[sop]; cb = new ssr(); do {
-                              auto war = raw.slice( reg[0], reg[1] );
-                                   dir = regex::match( war,"[^<°> \n\t]+" );
-                              } while(0);
+                elif( url::protocol(path)=="https" ){ do {
+                     ssl_t ssl; fetch_t args; *state=1;
+                     auto self = type::bind( this );
 
-                              while( gen( &str, raw.slice( pos, reg[0] ) )==1 )
-                                   { coNext; } pos = match[sop][1]; sop++;
+                     args.url     = path;
+                     args.method  = "GET";
+                     args.headers = header_t({
+                          { "Params", query::format( str.params ) },
+                          { "Host", url::hostname(path) }
+                     });
 
-                              while( (*cb)( str, dir )==1 ){ coNext; }
+                     https::fetch( args, &ssl ).fail([=](...){ *self->state=0; })
+                                               .then([=]( https_t cli ){
+                          if( !str.is_available() ){ return; }
+                          cli.onData([=]( string_t data ){ str.write(data); });
+                          cli.onDrain.once([=](){ *self->state=0; });
+                          stream::pipe( cli );
+                     });
 
-                         } while( gen( &str, raw.slice( pos ) )==1 ){ coNext; }
+                } while(0); while( *state==1 ){ coNext; } }
 
-                    }
+                else {
+                    coYield(1); set( path ); while( sop != match.size() ){
 
-               }
+                          reg = match[sop]; cb = new ssr(); do {
+                          auto war = raw.slice( reg[0], reg[1] );
+                               dir = regex::match( war,"[^<°> \n\t]+" );
+                          } while(0);
 
-          gnStop
-          }
+                          while( gen( &str, raw.slice( pos, reg[0] ) )==1 )
+                               { coNext; } pos = match[sop][1]; sop++;
 
-     };
+                          while( (*cb)( str, dir )==1 ){ coNext; }
+
+                     } while( gen( &str, raw.slice( pos ) )==1 ){ coNext; }
+                coEnd; }
+
+           }
+
+      gnStop
+      }
+
+};
+
+/*────────────────────────────────────────────────────────────────────────────*/
+
+GENERATOR( inp ){
+public:
+
+      template< class T >
+      coEmit( const T& file, const ptr_t<object_t>& done, string_t raw ) const noexcept {
+          static uint _state_=0; if( raw.empty() ){ _state_=0; return -1; }
+      gnStart
+
+           do { auto data = regex::search( raw, "\r\n\r\n" ); if( data.empty() ) { coEnd; }
+                auto hdr  = raw.splice(0,data[0]); header_t obj;
+                            raw.splice(0,4); file->close();
+
+                ptr_t<regex_t> regs ({
+                     regex_t( "filename=\"([^\"]+)\"" ),
+                     regex_t( "Content-Type: (.+)" ),
+                     regex_t( "name=\"([^\"]+)\"" )
+                });
+
+                regs[0].search(hdr); if( !regs[0].get_memory().empty() ){ obj["filename"] = regs[0].get_memory()[0]; }
+                regs[1].search(hdr); if( !regs[1].get_memory().empty() ){ obj["mimetype"] = regs[1].get_memory()[1]; }
+                regs[2].search(hdr); if( !regs[2].get_memory().empty() ){ obj["name"]     = regs[2].get_memory()[2]; }
+
+                if( !obj.has("filename") ){ (*done)[obj["name"]] = raw; coEnd; } else {
+                     auto sha = crypto::hash::SHA256();  sha.update( obj["mimetype"] );
+                          sha.update( encoder::key::generate("0123456789abcdef",32) );
+                          sha.update( obj["filename"] ); sha.update( obj["name"] );
+                          sha.update( string::to_string( process::now() ) );
+                     obj["path"] = path::join( "/tmp", sha.get() + ".tmp" );
+                    *file = fs::writable( obj["path"] );
+                }
+
+                if( !(*done)[obj["name"]].has_value() ){ (*done)[obj["name"]] = array_t<object_t>(); }
+                auto list = (*done)[obj["name"]].as<array_t<object_t>>(); auto name = obj["name"];
+                obj.erase("name"); list.push( json::parse( obj ) ); (*done)[name] = list;
+
+           } while(0); while( !file->is_closed() ) { file->write( raw ); coNext; }
+
+      gnStop
+      };
+
+};
 
 }}
 #endif
@@ -167,7 +222,7 @@ protected:
         header_t _headers;
         cookie_t _cookies;
         uint  status= 200;
-        int    state= 1;
+        int    state= 0;
     };  ptr_t<NODE> exp;
 
 public: query_t params;
@@ -202,45 +257,7 @@ public: query_t params;
           auto bon = regex::match( self->headers["Content-Type"], "boundary=[^ ]+" ).slice(9);
           if ( bon.empty() ){ res( json::parse(
                query::parse( url::normalize( "?" + self->read() ) )
-          )); return; }
-
-          auto input_parse = [=]( string_t inp ){ static uint _state_=0;
-               if( inp.empty() ){ _state_=0; return -1; }
-          gnStart
-
-               do {
-
-                    auto data = regex::search( inp, "\r\n\r\n" ); if( data.empty() ) { coEnd; }
-                    auto hdr  = inp.splice(0,data[0]); header_t obj;
-                                inp.splice(0,4); file->close();
-
-                    ptr_t<regex_t> regs ({
-                         regex_t( "filename=\"([^\"]+)\"" ),
-                         regex_t( "Content-Type: (.+)" ),
-                         regex_t( "name=\"([^\"]+)\"" )
-                    });
-
-                    regs[0].search(hdr); if( !regs[0].get_memory().empty() ){ obj["filename"] = regs[0].get_memory()[0]; }
-                    regs[1].search(hdr); if( !regs[1].get_memory().empty() ){ obj["mimetype"] = regs[1].get_memory()[1]; }
-                    regs[2].search(hdr); if( !regs[2].get_memory().empty() ){ obj["name"]     = regs[2].get_memory()[2]; }
-
-                    if( !obj.has("filename") ){ (*done)[obj["name"]] = inp; coEnd; } else {
-                         auto sha = crypto::hash::SHA256();  sha.update( obj["mimetype"] );
-                              sha.update( encoder::key::generate("0123456789abcdef",32) );
-                              sha.update( obj["filename"] ); sha.update( obj["name"] );
-                              sha.update( string::to_string( process::now() ) );
-                         obj["path"] = path::join( "/tmp", sha.get() + ".tmp" );
-                        *file = fs::writable( obj["path"] );
-                    }
-
-                    if( !(*done)[obj["name"]].has_value() ){ (*done)[obj["name"]] = array_t<object_t>(); }
-                    auto list = (*done)[obj["name"]].as<array_t<object_t>>(); auto name = obj["name"];
-                    obj.erase("name"); list.push( json::parse( obj ) ); (*done)[name] = list;
-
-               } while(0); while( !file->is_closed() ) { file->write( inp ); coNext; }
-
-          gnStop
-          };
+          )); return; } auto task = _express_::inp();
 
           process::poll::add([=](){
                if( self->is_closed() ){ rej(except_t( "something went wrong" )); return -1; }
@@ -251,9 +268,9 @@ public: query_t params;
                     if( read->data == "--" )    { coGoto(1); }
                     if( read->data == "--\r\n" ){ break; }
                     if( read->data == bon ){
-                             input_parse( prv->slice(0,-4) );
+                             task( file, done, prv->slice(0,-4) );
                             *prv = nullptr; coGoto(1);
-                    } else { input_parse(*prv ); }
+                    } else { task( file, done, *prv ); }
                    *prv = read->data; coYield(1);
                    *len-= read->state;
                } res( *done );
@@ -362,7 +379,6 @@ public: query_t params;
 
      const express_https_t& send() const noexcept {
           if( exp->state == 0 ){ return (*this); }
-        //header( "Transfer-Encoding", "chunked" );
           write_header(exp->status,exp->_headers);
           exp->state = 0; return (*this);
      }
@@ -417,9 +433,7 @@ protected:
                 cli.params[_path[1][x].slice(1)] = url::normalize( _path[0][x] ); }
           elif( _path[1][x].empty()        ){ continue;     }
           elif( _path[1][x] == "*"         ){ continue;     }
-          elif( _path[1][x] == nullptr     ){ continue;     }
-          elif( _path[1][x] != _path[0][x] ){ return false; }
-          }
+          elif( _path[1][x] != _path[0][x] ){ return false; }}
 
           return true;
      }
@@ -431,21 +445,21 @@ protected:
           function_t<void> next = [&](){ n = n->next; };
 
           while( n!=nullptr ){
-               if( !cli.is_available() || cli.is_express_closed() ){ break; }
-               if(( n->data.path == nullptr && regex::test( cli.path, "^"+_base ))
-               || ( n->data.path == nullptr && obj->path == nullptr )
-               || ( path_match( cli, _base, n->data.path )) ){
-               if ( n->data.method==nullptr || n->data.method==cli.method ){
-                    execute( _base, n->data, cli, next );
-               } else { next(); }
-               } else { next(); }
+             if( !cli.is_available() || cli.is_express_closed() ){ break; }
+             if(( n->data.path=="*" && regex::test( cli.path, "^"+_base ))
+             || ( n->data.path=="*" && obj->path.empty() )
+             || ( path_match( cli, _base, n->data.path ) ) ){
+             if ( n->data.method.empty() || n->data.method==cli.method ){
+                  execute( _base, n->data, cli, next );
+             } else { next(); }
+             } else { next(); }
           }
 
      }
 
      string_t normalize( string_t base, string_t path ) const noexcept {
-          return base.empty() ? ("/"+path) : path.empty() ?
-                                ("/"+base) : path::join( base, path );
+     return base.empty() ? ("/"+path) : path.empty() ?
+                           ("/"+base) : path::join( base, path );
      }
 
 public:
@@ -475,33 +489,25 @@ public:
     /*.........................................................................*/
 
     const express_tls_t& RAW( string_t _method, string_t _path, CALBK cb ) const noexcept {
-         express_item_t item; memset( (void*) &item, 0, sizeof(item) );
+         express_item_t item; // memset( (void*) &item, 0, sizeof(item) );
+         item.path     = _path.empty() ? "*" : _path;
          item.method   = _method;
-         item.path     = _path;
          item.callback = cb;
          obj->list.push( item ); return (*this);
     }
 
     const express_tls_t& RAW( string_t _method, CALBK cb ) const noexcept {
-         express_item_t item; memset( (void*) &item, 0, sizeof(item) );
-         item.method   = _method;
-         item.path     = "*";
-         item.callback = cb;
-         obj->list.push( item ); return (*this);
+         return RAW( _method, nullptr, cb );
     }
 
     const express_tls_t& RAW( CALBK cb ) const noexcept {
-         express_item_t item; memset( (void*) &item, 0, sizeof(item) );
-         item.method   = nullptr;
-         item.path     = "*";
-         item.callback = cb;
-         obj->list.push( item ); return (*this);
+         return RAW( nullptr, nullptr, cb );
     }
 
     /*.........................................................................*/
 
     const express_tls_t& USE( string_t _path, express_tls_t cb ) const noexcept {
-         express_item_t item; memset( (void*) &item, 0, sizeof(item) );
+         express_item_t item; // memset( (void*) &item, 0, sizeof(item) );
          cb.set_path( normalize( obj->path, _path ) );
          item.method     = nullptr;
          item.path       = "*";
@@ -510,30 +516,21 @@ public:
     }
 
     const express_tls_t& USE( express_tls_t cb ) const noexcept {
-         express_item_t item; memset( (void*) &item, 0, sizeof(item) );
-         cb.set_path( normalize( obj->path, nullptr ) );
-         item.method     = nullptr;
-         item.path       = "*";
-         item.router     = optional_t<MIMES>(cb);
-         obj->list.push( item ); return (*this);
+         return USE( nullptr, cb );
     }
 
     /*.........................................................................*/
 
     const express_tls_t& USE( string_t _path, MIDDL cb ) const noexcept {
-         express_item_t item; memset( (void*) &item, 0, sizeof(item) );
+         express_item_t item; // memset( (void*) &item, 0, sizeof(item) );
+         item.path       = _path.empty() ? "*" : _path;
          item.middleware = optional_t<MIDDL>(cb);
          item.method     = nullptr;
-         item.path       = _path;
          obj->list.push( item ); return (*this);
     }
 
     const express_tls_t& USE( MIDDL cb ) const noexcept {
-         express_item_t item; memset( (void*) &item, 0, sizeof(item) );
-         item.middleware = optional_t<MIDDL>(cb);
-         item.method     = nullptr;
-         item.path       = "*";
-         obj->list.push( item ); return (*this);
+         return USE( nullptr, cb );
     }
 
     /*.........................................................................*/

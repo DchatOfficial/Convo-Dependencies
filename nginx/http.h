@@ -31,7 +31,7 @@ protected:
              pth = regex::replace_all( pth, "\\.[.]+/", "" );
 
         auto bsd =!args["path"].has_value() ? "./" :
-                   args["path"].as<string_t>() ;  
+                   args["path"].as<string_t>() ;
 
         auto dir = pth.empty() ? path::join( bsd, "" ) :
                                  path::join( bsd,pth ) ;
@@ -41,17 +41,18 @@ protected:
 
         if( fs::exists_file(dir+".html") == true ){ dir += ".html"; }
         if( fs::exists_file(dir) == false || dir == bsd ){
+        if( !path::extname(dir).empty() ){ cli.status(404).send("not_found"); return; }
         if( fs::exists_file( path::join( bsd, "404.html" ) )){
             dir = path::join( bsd, "404.html" ); cli.status(404);
-        } else { 
-            cli.status(404).send("Oops 404 Error"); 
-            return; 
+        } else {
+            cli.status(404).send("Oops 404 Error");
+            return;
         }}
 
         if ( cli.headers["Range"].empty() == true ){
 
             if( regex::test(path::mimetype(dir),"audio|video",true) ){ cli.send(); return; }
-            if( regex::test(path::mimetype(dir),"html",true) ){ cli.render(dir); } else { 
+            if( regex::test(path::mimetype(dir),"html",true) ){ cli.render(dir); } else {
                 cli.header( "Cache-Control", "public, max-age=604800" );
 			    cli.sendFile( dir );
             }
@@ -64,10 +65,10 @@ protected:
                    rang[2] =min(rang[0]+CHUNK_MB(10),str.size()  );
 
             cli.header( "Content-Range", string::format("bytes %lu-%lu/%lu",rang[0],rang[1],str.size()) );
-            cli.header( "Content-Type",  path::mimetype(dir) ); cli.header( "Accept-Range", "bytes" ); 
-            cli.header( "Cache-Control", "public, max-age=604800" ); 
+            cli.header( "Content-Type",  path::mimetype(dir) ); cli.header( "Accept-Range", "bytes" );
+            cli.header( "Cache-Control", "public, max-age=604800" );
 
-            str.set_range( rang[0], rang[2] ); 
+            str.set_range( rang[0], rang[2] );
             cli.status(206).sendStream( str );
 
         }
@@ -87,14 +88,14 @@ protected:
         auto hdr = cli.headers;
 
         hdr["params"] = query::format( cli.params );
-        hdr["Real-Ip"]= cli.get_peername(); 
+        hdr["Real-Ip"]= cli.get_peername();
         hdr["Host"]   = uri.hostname;
 
         if( uri.protocol.to_lower_case() == "https" ){
-            
+
             ssl_t ssl; tls_t tmp ([=]( https_t dpx ){
                 dpx.write_header( slf->method, pth, slf->get_version(), hdr );
-                dpx .set_timeout( args["timeout"].as<uint>() ); 
+                dpx .set_timeout( args["timeout"].as<uint>() );
                 slf->set_timeout( args["timeout"].as<uint>() );
                 stream::duplex( *slf,dpx );
             }, &ssl );
@@ -102,14 +103,14 @@ protected:
             tmp.onError([=]( except_t err ){
                 slf->status(503).send( (string_t) err );
             });
-            
+
             tmp.connect( uri.hostname, uri.port ); slf->done();
-            
+
         } else {
-            
+
             tcp_t tmp ([=]( http_t dpx ){
                 dpx.write_header( slf->method, pth, slf->get_version(), hdr );
-                dpx .set_timeout( args["timeout"].as<uint>() ); 
+                dpx .set_timeout( args["timeout"].as<uint>() );
                 slf->set_timeout( args["timeout"].as<uint>() );
                 stream::duplex( *slf,dpx );
             });
@@ -117,9 +118,9 @@ protected:
             tmp.onError([=]( except_t err ){
                 slf->status(503).send( (string_t) err );
             });
-            
+
             tmp.connect( uri.hostname, uri.port ); slf->done();
-            
+
         }
 
     }
@@ -138,12 +139,12 @@ protected:
               if( cmd.to_lower_case() == "file" ){ self->file( cli, cmd, path, n ); }
             elif( cmd.to_lower_case() == "pipe" ){ self->pipe( cli, cmd, path, n ); }
             elif( cmd.to_lower_case() == "move" ){
-                auto href =!n["href"].has_value() ? "./" :  
+                auto href =!n["href"].has_value() ? "./" :
                             n["href"].as<string_t>();
                 cli.redirect( href );
             }
 
-        });   
+        });
     }
 
 public:
@@ -165,8 +166,8 @@ public:
 
 namespace nodepp { namespace nginx { namespace http {
 
-    template< class... T > nginx_http_t add( T... args ) { 
-        return nginx_http_t( args... ); 
+    template< class... T > nginx_http_t add( T... args ) {
+        return nginx_http_t( args... );
     }
 
 }}}
