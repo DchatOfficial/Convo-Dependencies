@@ -49,7 +49,7 @@ protected:
             return;
         }}
 
-        if ( cli.headers["Range"].empty() == true ){
+        if( !cli.headers.has("Range") ){
 
             if( regex::test(path::mimetype(dir),"audio|video",true) ){ cli.send(); return; }
             if( regex::test(path::mimetype(dir),"html",true) ){ cli.render(dir); } else {
@@ -87,7 +87,7 @@ protected:
         auto slf = type::bind( cli );
         auto hdr = cli.headers;
 
-        hdr["params"] = query::format( cli.params );
+        hdr["Params"] = query::format( cli.params );
         hdr["Real-Ip"]= cli.get_peername();
         hdr["Host"]   = uri.hostname;
 
@@ -101,7 +101,7 @@ protected:
             }, &ssl );
 
             tmp.onError([=]( except_t err ){
-                slf->status(503).send( (string_t) err );
+                slf->status(503).send( err.what() );
             });
 
             tmp.connect( uri.hostname, uri.port ); slf->done();
@@ -116,7 +116,7 @@ protected:
             });
 
             tmp.onError([=]( except_t err ){
-                slf->status(503).send( (string_t) err );
+                slf->status(503).send( err.what() );
             });
 
             tmp.connect( uri.hostname, uri.port ); slf->done();
